@@ -20,17 +20,18 @@
 
     .wrap {
       width: 100%;
-      max-width: 560px;
-      padding: 24px;
+      max-width: 100%;
+      padding: 10px 10px 8px;
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 14px;
+      gap: 8px;
+      overflow: hidden;
     }
 
     
     .hud {
-      width: 100%;
+      width: min(96vw, 500px);
       display: flex;
       justify-content: space-between;
       gap: 12px;
@@ -38,6 +39,7 @@
       text-transform: uppercase;
       letter-spacing: 0.08em;
       font-size: 14px;
+      padding: 0 2px;
     }
 
     .panel {
@@ -49,12 +51,14 @@
     }
 
     canvas {
-      width: min(92vw, 420px);
-      height: min(92vw, 420px);
+      width: min(96vw, 500px);
+      height: min(96vw, 500px);
       background: #0a0a0a;
       border: 2px solid #1f1f1f;
       box-shadow: 0 0 30px rgba(255,255,255,0.06);
       image-rendering: pixelated;
+      display: block;
+      margin: 0 auto;
     }
 
     .overlay {
@@ -74,10 +78,10 @@
 
     .card {
       pointer-events: auto;
-      background: rgba(0,0,0,0.72);
+      background: rgba(0,0,0,0.78);
       border: 1px solid rgba(255,255,255,0.14);
       padding: 18px 20px;
-      max-width: 320px;
+      max-width: 280px;
       backdrop-filter: blur(8px);
     }
 
@@ -111,12 +115,13 @@
       text-align: center;
       font-size: 12px;
       opacity: 0.7;
-      line-height: 1.5;
+      line-height: 1.45;
       max-width: 420px;
+      margin-bottom: 2px;
     }
   </style>
 </head>
-<body>
+<body style="overflow:hidden;">
   <div class="wrap">
 <div class="hud">
       <div>Score: <span id="score">0</span></div>
@@ -124,11 +129,11 @@
     </div>
 
     <div class="panel">
-      <canvas id="game" width="420" height="420"></canvas>
+      <canvas id="game" width="500" height="500"></canvas>
       <div class="overlay" id="overlay">
         <div class="card">
           <h2 id="overlayTitle">Start</h2>
-          <p id="overlayText">Kliknij start i zbieraj punkty. Na planszy masz BABYGOAT w tle.</p>
+          <p id="overlayText">Kliknij start i zbieraj punkty.</p>
           <button id="startBtn">Start Game</button>
         </div>
       </div>
@@ -150,7 +155,7 @@
     const overlayText = document.getElementById('overlayText');
     const startBtn = document.getElementById('startBtn');
 
-    const gridSize = 20;
+    const gridSize = 25;
     const tileCount = canvas.width / gridSize;
     const speed = 105;
 
@@ -267,7 +272,7 @@
       ctx.rotate(-0.18);
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.font = '900 64px Arial';
+      ctx.font = '900 76px Arial';
       ctx.fillStyle = 'rgba(255,255,255,0.055)';
       ctx.fillText('BABYGOAT', 0, 0);
       ctx.restore();
