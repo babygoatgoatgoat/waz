@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BABYGOAT Snake</title>
+  <style>
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #050505;
+      font-family: Arial, Helvetica, sans-serif;
+      color: #fff;
+    }
+
+    .wrap {
+      width: 100%;
+      max-width: 560px;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .title {
+      font-size: clamp(28px, 6vw, 52px);
+      font-weight: 900;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      text-align: center;
+      text-shadow: 0 0 14px rgba(255,255,255,0.2);
+    }
+
+    .sub {
+      opacity: 0.72;
+      font-size: 14px;
+      text-align: center;
+      line-height: 1.4;
+      max-width: 420px;
+    }
+
+    .hud {
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-size: 14px;
+    }
+
+    .panel {
+      position: relative;
+      width: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    canvas {
+      width: min(92vw, 420px);
+      height: min(92vw, 420px);
+      background: #0a0a0a;
+      border: 2px solid #1f1f1f;
+      box-shadow: 0 0 30px rgba(255,255,255,0.06);
+      image-rendering: pixelated;
+    }
+
+    .overlay {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+      text-align: center;
+      padding: 24px;
+    }
+
+    .overlay.hidden {
+      display: none;
+    }
+
+    .card {
+      pointer-events: auto;
+      background: rgba(0,0,0,0.72);
+      border: 1px solid rgba(255,255,255,0.14);
+      padding: 18px 20px;
+      max-width: 320px;
+      backdrop-filter: blur(8px);
+    }
+
+    .card h2 {
+      margin: 0 0 10px;
+      font-size: 18px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .card p {
+      margin: 0 0 14px;
+      font-size: 13px;
+      line-height: 1.5;
+      opacity: 0.86;
+    }
+
+    button {
+      appearance: none;
+      border: 0;
+      padding: 12px 16px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      background: #fff;
+      color: #000;
+      cursor: pointer;
+    }
+
+    .controls {
+      text-align: center;
+      font-size: 12px;
+      opacity: 0.7;
+      line-height: 1.5;
+      max-width: 420px;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="title">BABYGOAT</div>
+    <div class="sub">Mini Snake do wrzucenia na stronę. Strzałki albo WASD. Enter = restart.</div>
+
+    <div class="hud">
+      <div>Score: <span id="score">0</span></div>
+      <div>Best: <span id="best">0</span></div>
+    </div>
+
+    <div class="panel">
+      <canvas id="game" width="420" height="420"></canvas>
+      <div class="overlay" id="overlay">
+        <div class="card">
+          <h2 id="overlayTitle">Start</h2>
+          <p id="overlayText">Kliknij start i zbieraj punkty. Na planszy masz BABYGOAT w tle.</p>
+          <button id="startBtn">Start Game</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="controls">
+      Sterowanie: strzałki / WASD<br />
+      Restart po przegranej: Enter
+    </div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('game');
+    const ctx = canvas.getContext('2d');
+    const scoreEl = document.getElementById('score');
+    const bestEl = document.getElementById('best');
+    const overlay = document.getElementById('overlay');
+    const overlayTitle = document.getElementById('overlayTitle');
+    const overlayText = document.getElementById('overlayText');
+    const startBtn = document.getElementById('startBtn');
+
+    const gridSize = 20;
+    const tileCount = canvas.width / gridSize;
+    const speed = 105;
+
+    let snake;
+    let direction;
+    let nextDirection;
+    let food;
+    let score;
+    let best = Number(localStorage.getItem('babygoat-snake-best') || 0);
+    let running = false;
+    let gameLoop = null;
+
+    bestEl.textContent = best;
+
+    function resetGame() {
+      snake = [
+        { x: 10, y: 10 },
+        { x: 9, y: 10 },
+        { x: 8, y: 10 }
+      ];
+      direction = { x: 1, y: 0 };
+      nextDirection = { x: 1, y: 0 };
+      score = 0;
+      scoreEl.textContent = score;
+      placeFood();
+      draw();
+    }
+
+    function placeFood() {
+      do {
+        food = {
+          x: Math.floor(Math.random() * tileCount),
+          y: Math.floor(Math.random() * tileCount)
+        };
+      } while (snake.some(part => part.x === food.x && part.y === food.y));
+    }
+
+    function startGame() {
+      resetGame();
+      running = true;
+      overlay.classList.add('hidden');
+      clearInterval(gameLoop);
+      gameLoop = setInterval(update, speed);
+    }
+
+    function endGame() {
+      running = false;
+      clearInterval(gameLoop);
+
+      if (score > best) {
+        best = score;
+        localStorage.setItem('babygoat-snake-best', String(best));
+        bestEl.textContent = best;
+      }
+
+      overlayTitle.textContent = 'Game Over';
+      overlayText.textContent = `Twój wynik: ${score}. Kliknij przycisk albo naciśnij Enter, żeby zagrać jeszcze raz.`;
+      startBtn.textContent = 'Play Again';
+      overlay.classList.remove('hidden');
+    }
+
+    function update() {
+      direction = nextDirection;
+      const head = {
+        x: snake[0].x + direction.x,
+        y: snake[0].y + direction.y
+      };
+
+      if (
+        head.x < 0 ||
+        head.y < 0 ||
+        head.x >= tileCount ||
+        head.y >= tileCount ||
+        snake.some(part => part.x === head.x && part.y === head.y)
+      ) {
+        endGame();
+        return;
+      }
+
+      snake.unshift(head);
+
+      if (head.x === food.x && head.y === food.y) {
+        score += 1;
+        scoreEl.textContent = score;
+        placeFood();
+      } else {
+        snake.pop();
+      }
+
+      draw();
+    }
+
+    function drawGrid() {
+      ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+      ctx.lineWidth = 1;
+
+      for (let i = 0; i <= tileCount; i++) {
+        const p = i * gridSize;
+        ctx.beginPath();
+        ctx.moveTo(p, 0);
+        ctx.lineTo(p, canvas.height);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(0, p);
+        ctx.lineTo(canvas.width, p);
+        ctx.stroke();
+      }
+    }
+
+    function drawBackgroundText() {
+      ctx.save();
+      ctx.translate(canvas.width / 2, canvas.height / 2);
+      ctx.rotate(-0.18);
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.font = '900 64px Arial';
+      ctx.fillStyle = 'rgba(255,255,255,0.055)';
+      ctx.fillText('BABYGOAT', 0, 0);
+      ctx.restore();
+    }
+
+    function drawFood() {
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(food.x * gridSize + 5, food.y * gridSize + 5, gridSize - 10, gridSize - 10);
+    }
+
+    function drawSnake() {
+      snake.forEach((part, index) => {
+        if (index === 0) {
+          ctx.fillStyle = '#ffffff';
+        } else {
+          ctx.fillStyle = 'rgba(255,255,255,0.82)';
+        }
+
+        ctx.fillRect(part.x * gridSize + 2, part.y * gridSize + 2, gridSize - 4, gridSize - 4);
+      });
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = '#090909';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      drawGrid();
+      drawBackgroundText();
+      drawFood();
+      drawSnake();
+    }
+
+    document.addEventListener('keydown', (e) => {
+      const key = e.key.toLowerCase();
+
+      if (!running && key === 'enter') {
+        startGame();
+        return;
+      }
+
+      if (key === 'arrowup' || key === 'w') {
+        if (direction.y !== 1) nextDirection = { x: 0, y: -1 };
+      }
+      if (key === 'arrowdown' || key === 's') {
+        if (direction.y !== -1) nextDirection = { x: 0, y: 1 };
+      }
+      if (key === 'arrowleft' || key === 'a') {
+        if (direction.x !== 1) nextDirection = { x: -1, y: 0 };
+      }
+      if (key === 'arrowright' || key === 'd') {
+        if (direction.x !== -1) nextDirection = { x: 1, y: 0 };
+      }
+    });
+
+    startBtn.addEventListener('click', startGame);
+
+    resetGame();
+  </script>
+</body>
+</html>
